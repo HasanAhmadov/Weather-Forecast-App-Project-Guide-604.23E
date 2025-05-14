@@ -11,6 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  
+    
   http: ^0.13.6
   provider: ^6.0.5
   geolocator: ^14.0.0
@@ -24,5 +26,6 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
 flutter:
-
+  assets: 
+    - lib/flutterapikey.env
   uses-material-design: true
