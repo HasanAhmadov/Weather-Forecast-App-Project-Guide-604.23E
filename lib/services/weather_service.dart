@@ -11,12 +11,15 @@ class WeatherService extends ChangeNotifier {
   WeatherData? weatherData;
   bool isLoading = false;
   String? errorMessage;
+  String? cityName;
+  List<Map<String, dynamic>> hourlyForecast = [];
+  List<Map<String, dynamic>> dailyForecast = [];
 
-  
   final String _geoCodingBaseUrl = 'http://api.openweathermap.org/geo/1.0/direct';
   final String _5dayForecast = 'https://api.openweathermap.org/data/2.5/forecast';
-  final String _currentWeather =  'https://api.openweathermap.org/data/2.5/weather';
-  final String _weatherIcons =  'http://openweathermap.org/img/wn/'; 
+  final String _currentWeather = 'https://api.openweathermap.org/data/2.5/weather';
+  final String _weatherIcons = 'http://openweathermap.org/img/wn/';
+
   Future<void> fetchWeatherByLocation(double lat, double lon) async {
     final apiKey = dotenv.env['OPENWEATHERMAP_API_KEY'];
     if (apiKey == null || apiKey.isEmpty) {
@@ -25,21 +28,38 @@ class WeatherService extends ChangeNotifier {
       return;
     }
 
-    final url = '$_currentWeather?lat=$lat&lon=$lon&units=metric&appid=$apiKey'; 
-    '$_5dayForecast?lat=$lat&lon=$lon&units=metric&appid=$apiKey';
-    print('Fetching weather from: $url');
+    final url = '$_currentWeather?lat=$lat&lon=$lon&units=metric&appid=$apiKey';
+    final forecastUrl = '$_5dayForecast?lat=$lat&lon=$lon&units=metric&appid=$apiKey';
 
     try {
       isLoading = true;
       notifyListeners();
 
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        weatherData = WeatherData.fromJson(json);
+      final weatherResponse = await http.get(Uri.parse(url));
+      final forecastResponse = await http.get(Uri.parse(forecastUrl));
+
+      if (weatherResponse.statusCode == 200 && forecastResponse.statusCode == 200) {
+        final weatherJson = jsonDecode(weatherResponse.body);
+        final forecastJson = jsonDecode(forecastResponse.body);
+
+        weatherData = WeatherData.fromJson(weatherJson);
+        cityName = weatherJson['name'];
+
+        // Hourly forecast (next 8 forecasts)
+        hourlyForecast = List<Map<String, dynamic>>.from(
+          forecastJson['list'].take(8).map((e) => {
+            'time': e['dt_txt'],
+            'temp': e['main']['temp'],
+            'icon': e['weather'][0]['icon'],
+          }),
+        );
+
+        // Daily forecast (7 days)
+        dailyForecast = processDailyForecast(forecastJson['list']);
+
         errorMessage = null;
       } else {
-        errorMessage = "Failed to fetch weather data: ${response.statusCode} ${response.body}";
+        errorMessage = "Failed to fetch data.";
       }
     } catch (e) {
       errorMessage = "Error: $e";
@@ -47,6 +67,60 @@ class WeatherService extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
     }
+  }
+
+  List<Map<String, dynamic>> processDailyForecast(List<dynamic> forecastList) {
+    Map<String, List<dynamic>> groupedByDay = {};
+    
+    for (var forecast in forecastList) {
+      DateTime date = DateTime.parse(forecast['dt_txt']);
+      String dayKey = "${date.year}-${date.month}-${date.day}";
+      
+      if (!groupedByDay.containsKey(dayKey)) {
+        groupedByDay[dayKey] = [];
+      }
+      groupedByDay[dayKey]!.add(forecast);
+    }
+    
+    List<Map<String, dynamic>> dailyData = [];
+    List<String> sortedDays = groupedByDay.keys.toList()..sort();
+    
+    for (var day in sortedDays.take(7)) {
+      var dayForecasts = groupedByDay[day]!;
+      
+      double maxTemp = dayForecasts.map((f) => f['main']['temp_max'] as double).reduce((a, b) => a > b ? a : b);
+      double minTemp = dayForecasts.map((f) => f['main']['temp_min'] as double).reduce((a, b) => a < b ? a : b);
+      
+      // Get the most common weather condition for the day
+      var mostCommonCondition = dayForecasts
+          .map((f) => f['weather'][0])
+          .fold<Map<String, int>>({}, (map, condition) {
+            String key = "${condition['id']}-${condition['main']}";
+            map[key] = (map[key] ?? 0) + 1;
+            return map;
+          })
+          .entries
+          .reduce((a, b) => a.value > b.value ? a : b)
+          .key
+          .split('-')[1];
+      
+      String icon = dayForecasts.first['weather'][0]['icon'];
+      
+      dailyData.add({
+        'date': dayForecasts.first['dt_txt'].toString().split(' ')[0],
+        'day': _getDayName(DateTime.parse(dayForecasts.first['dt_txt'])),
+        'max_temp': maxTemp,
+        'min_temp': minTemp,
+        'condition': mostCommonCondition,
+        'icon': icon,
+      });
+    }
+    
+    return dailyData;
+  }
+  
+  String _getDayName(DateTime date) {
+    return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.weekday % 7];
   }
 
   Future<void> fetchWeatherByCity(String city) async {
@@ -58,7 +132,6 @@ class WeatherService extends ChangeNotifier {
     }
 
     final url = '$_geoCodingBaseUrl?q=$city&limit=1&appid=$apiKey';
-    print('Fetching coordinates for: $city → $url');
 
     try {
       isLoading = true;
@@ -72,11 +145,12 @@ class WeatherService extends ChangeNotifier {
         } else {
           final lat = data[0]['lat'];
           final lon = data[0]['lon'];
+          cityName = city;
           await fetchWeatherByLocation(lat, lon);
           return;
         }
       } else {
-        errorMessage = "Failed to fetch city coordinates: ${response.statusCode}";
+        errorMessage = "Failed to fetch city coordinates.";
       }
     } catch (e) {
       errorMessage = "Error: $e";
