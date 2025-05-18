@@ -106,7 +106,7 @@ class _HomePageState extends State<HomePage> {
           ),
           IconButton(
             icon: const Icon(Icons.bookmark),
-            tooltip: 'Saved Locations',
+            tooltip: 'Recent Locations',
             onPressed: () async {
               final result = await Navigator.of(context).push(
                 MaterialPageRoute(
@@ -115,10 +115,8 @@ class _HomePageState extends State<HomePage> {
               );
               if (result != null) {
                 if (result is String) {
-                  // Выбран город - загружаем погоду
                   await weatherService.fetchWeatherByCity(result);
                 } else if (result is List<String>) {
-                  // Обновлен список сохраненных городов
                   setState(() {
                     savedCities = result;
                   });
@@ -139,17 +137,87 @@ class _HomePageState extends State<HomePage> {
                     : ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
-                          Center(
-                            child: Text(
-                              weatherService.cityName ?? 'Unknown',
-                              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: Colors.black),
+                          // Current Weather Card - Enhanced
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Colors.blue, Colors.lightBlueAccent],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blue.withOpacity(0.3),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  weatherService.cityName ?? 'Unknown',
+                                  style: const TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.network(
+                                      'http://openweathermap.org/img/wn/${weatherService.weatherData!.weatherIcon}@4x.png',
+                                      width: 100,
+                                      height: 100,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      '${weatherService.weatherData!.temperature}°C',
+                                      style: const TextStyle(
+                                        fontSize: 48,
+                                        fontWeight: FontWeight.w300,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  weatherService.weatherData!.condition,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    _buildWeatherDetail(
+                                      icon: Icons.water_drop,
+                                      value: '${weatherService.weatherData!.humidity}%',
+                                      label: 'Humidity',
+                                    ),
+                                    _buildWeatherDetail(
+                                      icon: Icons.air,
+                                      value: '${weatherService.weatherData!.windSpeed} m/s',
+                                      label: 'Wind',
+                                    ),
+                                    _buildWeatherDetail(
+                                      icon: Icons.thermostat,
+                                      value: '${weatherService.weatherData!.feelsLike}°C',
+                                      label: 'Feels Like',
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 10),
-                          Center(child: Text("Temperature: ${weatherService.weatherData!.temperature}°C", style: const TextStyle(color: Colors.black))),
-                          Center(child: Text("Condition: ${weatherService.weatherData!.condition}", style: const TextStyle(color: Colors.black))),
-                          Center(child: Text("Humidity: ${weatherService.weatherData!.humidity}%", style: const TextStyle(color: Colors.black))),
-                          Center(child: Text("Wind Speed: ${weatherService.weatherData!.windSpeed} m/s", style: const TextStyle(color: Colors.black))),
                           const SizedBox(height: 30),
 const Center(
   child: Text(
@@ -190,7 +258,14 @@ Center(
                 width: 50,
                 height: 50,
               ),
-              Text('$temp°C', style: const TextStyle(fontSize: 14, color: Colors.black)),
+              Text(
+                '$temp°C', 
+                style: const TextStyle(
+                  fontSize: 14, 
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold, // Added this line
+                ),
+              ),
             ],
           ),
         );
@@ -200,18 +275,19 @@ Center(
 ),
 const SizedBox(height: 30),
 
+                          // Daily Forecast
                           const Center(
-                            child: Text(
-                              "Daily Forecast",
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
-                            ),
-                          ),
+  child: Text(
+    "Daily Forecast",
+    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
+  ),
+),
 
                           const SizedBox(height: 10),
                           Column(
                             children: weatherService.dailyForecast.map((daily) {
                               return Container(
-                                margin: const EdgeInsets.symmetric(vertical: 6),
+                                margin: const EdgeInsets.only(bottom: 8),
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
@@ -227,23 +303,53 @@ const SizedBox(height: 30),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      daily['day'],
-                                      style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.black),
+                                    SizedBox(
+                                      width: 80,
+                                      child: Text(
+                                        daily['day'],
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: Colors.black,
+                                        ),
+                                      ),
                                     ),
                                     Image.network(
                                       'http://openweathermap.org/img/wn/${daily['icon']}@2x.png',
                                       width: 40,
                                       height: 40,
                                     ),
-                                    Text(
-                                      daily['condition'],
-                                      style: const TextStyle(fontSize: 14, color: Colors.black),
+                                    SizedBox(
+                                      width: 100,
+                                      child: Text(
+                                        daily['condition'],
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.black54,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                    Text(
-                                      "H: ${ (daily['max_temp'] as num).toDouble().toStringAsFixed(1)}°C\nL: ${(daily['min_temp'] as num).toDouble().toStringAsFixed(1)}°C",
-                                      textAlign: TextAlign.right,
-                                      style: const TextStyle(fontSize: 14, color: Colors.black),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          "H: ${(daily['max_temp'] as num).toDouble().toStringAsFixed(1)}°C",
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                        Text(
+                                          "L: ${(daily['min_temp'] as num).toDouble().toStringAsFixed(1)}°C",
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blue,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -255,9 +361,32 @@ const SizedBox(height: 30),
       ),
     );
   }
+
+  Widget _buildWeatherDetail({required IconData icon, required String value, required String label}) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.white, size: 30),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
-// Экран сохраненных локаций
 class SavedLocationsPage extends StatefulWidget {
   final List<String> savedCities;
   const SavedLocationsPage({super.key, required this.savedCities});
@@ -276,43 +405,35 @@ class _SavedLocationsPageState extends State<SavedLocationsPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Saved Locations'),
-        backgroundColor: Colors.blue,
-      ),
-      body: cities.isEmpty
-          ? const Center(child: Text('No saved locations'))
-          : ListView.builder(
-              itemCount: cities.length,
-              itemBuilder: (context, index) {
-                final city = cities[index];
-                return ListTile(
-                  title: Text(city),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      setState(() {
-                        cities.removeAt(index);
-                      });
-                    },
-                  ),
-                  onTap: () {
-                    Navigator.of(context).pop(city);
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text('Recent Locations'),
+      backgroundColor: Colors.blue,
+    ),
+    body: cities.isEmpty
+        ? const Center(child: Text('No recent locations'))
+        : ListView.builder(
+            itemCount: cities.length,
+            itemBuilder: (context, index) {
+              final city = cities[index];
+              return ListTile(
+                title: Text(city),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () {
+                    setState(() {
+                      cities.removeAt(index);
+                    });
                   },
-                );
-              },
-            ),
-      floatingActionButton: cities.isEmpty
-          ? null
-          : FloatingActionButton.extended(
-              icon: const Icon(Icons.save),
-              label: const Text('Save Changes'),
-              onPressed: () {
-                Navigator.of(context).pop(cities);
-              },
-            ),
-    );
-  }
+                ),
+                onTap: () {
+                  Navigator.of(context).pop(city);
+                },
+              );
+            },
+          ),
+    // Removed the floatingActionButton property completely
+  );
+}
 }
