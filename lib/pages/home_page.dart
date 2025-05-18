@@ -46,6 +46,49 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _showCitySearchDialog() async {
+    final weatherService = Provider.of<WeatherService>(context, listen: false);
+    final city = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        String selectedCity = '';
+        return AlertDialog(
+          title: const Text("Search City"),
+          content: SizedBox(
+            height: 60,
+            child: TypeAheadField<String>(
+              textFieldConfiguration: const TextFieldConfiguration(
+                decoration: InputDecoration(
+                  hintText: "Enter city",
+                ),
+              ),
+              suggestionsCallback: (pattern) async {
+                return await CityService.fetchCitySuggestions(pattern);
+              },
+              itemBuilder: (context, String suggestion) {
+                return ListTile(title: Text(suggestion));
+              },
+              onSuggestionSelected: (String suggestion) {
+                selectedCity = suggestion.split(',')[0];
+                Navigator.of(context).pop(selectedCity);
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text("Cancel"),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      },
+    );
+    if (city != null && city.isNotEmpty) {
+      await weatherService.fetchWeatherByCity(city);
+      await _addCityToSaved(city);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final weatherService = Provider.of<WeatherService>(context);
@@ -56,6 +99,11 @@ class _HomePageState extends State<HomePage> {
         title: const Text("Weather Forecast"),
         backgroundColor: Colors.blue,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search City',
+            onPressed: _showCitySearchDialog,
+          ),
           IconButton(
             icon: const Icon(Icons.bookmark),
             tooltip: 'Saved Locations',
@@ -103,59 +151,62 @@ class _HomePageState extends State<HomePage> {
                           Center(child: Text("Humidity: ${weatherService.weatherData!.humidity}%", style: const TextStyle(color: Colors.black))),
                           Center(child: Text("Wind Speed: ${weatherService.weatherData!.windSpeed} m/s", style: const TextStyle(color: Colors.black))),
                           const SizedBox(height: 30),
+const Center(
+  child: Text(
+    "Hourly Forecast",
+    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
+  ),
+),
+const SizedBox(height: 10),
+Center(
+  child: SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: weatherService.hourlyForecast.map((forecast) {
+        final time = forecast['time'].toString().split(' ')[1].substring(0, 5);
+        final temp = (forecast['temp'] as num).toDouble().toStringAsFixed(1);
+        final icon = forecast['icon'];
+        return Container(
+          width: 80,
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 4,
+                offset: Offset(0, 2),
+          )],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(time, style: const TextStyle(fontSize: 14, color: Colors.black)),
+              Image.network(
+                'http://openweathermap.org/img/wn/$icon@2x.png',
+                width: 50,
+                height: 50,
+              ),
+              Text('$temp°C', style: const TextStyle(fontSize: 14, color: Colors.black)),
+            ],
+          ),
+        );
+      }).toList(),
+    ),
+  ),
+),
+const SizedBox(height: 30),
 
-                          const Text(
-                            "Hourly Forecast",
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            height: 120,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: weatherService.hourlyForecast.length,
-                              itemBuilder: (context, index) {
-                                final forecast = weatherService.hourlyForecast[index];
-                                final time = forecast['time'].toString().split(' ')[1].substring(0, 5);
-                                final temp = (forecast['temp'] as num).toDouble().toStringAsFixed(1);
-                                final icon = forecast['icon'];
-                                return Container(
-                                  width: 80,
-                                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black12,
-                                        blurRadius: 4,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(time, style: const TextStyle(fontSize: 14, color: Colors.black)),
-                                      Image.network(
-                                        'http://openweathermap.org/img/wn/$icon@2x.png',
-                                        width: 50,
-                                        height: 50,
-                                      ),
-                                      Text('$temp°C', style: const TextStyle(fontSize: 14, color: Colors.black)),
-                                    ],
-                                  ),
-                                );
-                              },
+                          const Center(
+                            child: Text(
+                              "Daily Forecast",
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
                             ),
                           ),
-                          const SizedBox(height: 30),
 
-                          const Text(
-                            "Daily Forecast",
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
-                          ),
                           const SizedBox(height: 10),
                           Column(
                             children: weatherService.dailyForecast.map((daily) {
@@ -201,52 +252,6 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ],
                       ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-        onPressed: () async {
-          final city = await showDialog<String>(
-            context: context,
-            builder: (context) {
-              String selectedCity = '';
-              return AlertDialog(
-                title: const Text("Search City"),
-                content: SizedBox(
-                  height: 60,
-                  child: TypeAheadField<String>(
-                    textFieldConfiguration: const TextFieldConfiguration(
-                      decoration: InputDecoration(
-                        hintText: "Enter city",
-                      ),
-                    ),
-                    suggestionsCallback: (pattern) async {
-                      return await CityService.fetchCitySuggestions(pattern);
-                    },
-                    itemBuilder: (context, String suggestion) {
-                      return ListTile(title: Text(suggestion));
-                    },
-                    onSuggestionSelected: (String suggestion) {
-                      selectedCity = suggestion.split(',')[0];
-                      Navigator.of(context).pop(selectedCity);
-                    },
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    child: const Text("Cancel"),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              );
-            },
-          );
-          if (city != null && city.isNotEmpty) {
-            await weatherService.fetchWeatherByCity(city);
-            await _addCityToSaved(city);
-          }
-        },
-        child: const Icon(Icons.search),
       ),
     );
   }
