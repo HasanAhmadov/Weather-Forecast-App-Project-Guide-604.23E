@@ -96,7 +96,16 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Colors.grey[200],
       appBar: AppBar(
-        title: const Text("Weather Forecast"),
+        title: const Text(
+  "Weather Forecast",
+  style: TextStyle(
+    fontSize: 22,
+    fontWeight: FontWeight.bold,
+    letterSpacing: 1.2,
+    color: Colors.white,
+    fontFamily: 'Roboto', // Optional: use a custom font
+  ),
+),
         backgroundColor: Colors.blue,
         actions: [
           IconButton(
