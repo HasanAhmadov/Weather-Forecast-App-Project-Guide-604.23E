@@ -47,47 +47,70 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _showCitySearchDialog() async {
-    final weatherService = Provider.of<WeatherService>(context, listen: false);
-    final city = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        String selectedCity = '';
-        return AlertDialog(
-          title: const Text("Search City"),
-          content: SizedBox(
-            height: 60,
-            child: TypeAheadField<String>(
-              textFieldConfiguration: const TextFieldConfiguration(
-                decoration: InputDecoration(
-                  hintText: "Enter city",
+  final weatherService = Provider.of<WeatherService>(context, listen: false);
+  final city = await showDialog<String>(
+    context: context,
+    builder: (context) {
+      String selectedCity = '';
+      return AlertDialog(
+        backgroundColor: Colors.white, // Set dialog background to white
+        title: const Text("Search City", style: TextStyle(color: Colors.black)),
+        content: SizedBox(
+          height: 60,
+          child: TypeAheadField<String>(
+            textFieldConfiguration: TextFieldConfiguration(
+              style: const TextStyle(color: Colors.black),
+              decoration: InputDecoration(
+                hintText: "Enter city",
+                hintStyle: const TextStyle(color: Colors.grey),
+                filled: true,
+                fillColor: Colors.white,
+                border: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                  borderSide: BorderSide(color: Colors.grey),
+                ),
+                enabledBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                  borderSide: BorderSide(color: Colors.grey),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                  borderSide: BorderSide(color: Colors.blue, width: 2),
                 ),
               ),
-              suggestionsCallback: (pattern) async {
-                return await CityService.fetchCitySuggestions(pattern);
-              },
-              itemBuilder: (context, String suggestion) {
-                return ListTile(title: Text(suggestion));
-              },
-              onSuggestionSelected: (String suggestion) {
-                selectedCity = suggestion.split(',')[0];
-                Navigator.of(context).pop(selectedCity);
-              },
             ),
+            suggestionsCallback: (pattern) async {
+              return await CityService.fetchCitySuggestions(pattern);
+            },
+            suggestionsBoxDecoration: SuggestionsBoxDecoration(
+              color: Colors.white, // Suggestions box background
+              borderRadius: BorderRadius.circular(8),
+            ),
+            itemBuilder: (context, String suggestion) {
+              return ListTile(
+                title: Text(suggestion, style: const TextStyle(color: Colors.black)),
+              );
+            },
+            onSuggestionSelected: (String suggestion) {
+              selectedCity = suggestion.split(',')[0];
+              Navigator.of(context).pop(selectedCity);
+            },
           ),
-          actions: [
-            TextButton(
-              child: const Text("Cancel"),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
-        );
-      },
-    );
-    if (city != null && city.isNotEmpty) {
-      await weatherService.fetchWeatherByCity(city);
-      await _addCityToSaved(city);
-    }
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Cancel", style: TextStyle(color: Colors.black)),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      );
+    },
+  );
+  if (city != null && city.isNotEmpty) {
+    await weatherService.fetchWeatherByCity(city);
+    await _addCityToSaved(city);
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -416,18 +439,20 @@ class _SavedLocationsPageState extends State<SavedLocationsPage> {
   @override
 Widget build(BuildContext context) {
   return Scaffold(
+    backgroundColor: Colors.white,
     appBar: AppBar(
       title: const Text('Recent Locations'),
       backgroundColor: Colors.blue,
     ),
     body: cities.isEmpty
-        ? const Center(child: Text('No recent locations'))
+
+        ? const Center(child: Text('No recent locations', style: TextStyle(color: Colors.black)))
         : ListView.builder(
             itemCount: cities.length,
             itemBuilder: (context, index) {
               final city = cities[index];
               return ListTile(
-                title: Text(city),
+                title: Text(city, style: TextStyle(color: Colors.black, fontSize: 24),),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () {
@@ -439,10 +464,10 @@ Widget build(BuildContext context) {
                 onTap: () {
                   Navigator.of(context).pop(city);
                 },
-              );
+              );  
             },
           ),
     // Removed the floatingActionButton property completely
   );
 }
-}
+} 
